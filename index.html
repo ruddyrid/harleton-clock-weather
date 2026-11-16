@@ -1,0 +1,2514 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <title>Harleton, TX — Clock &amp; Weather</title>
+
+  <!-- Optional web fonts (non-blocking; graceful system font fallbacks included) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;600;700&family=Playfair+Display:wght@400;600;700&family=Space+Grotesk:wght@300;400;500;600;700&display=swap"
+    rel="stylesheet"
+    media="print"
+    onload="this.media='all'"
+  />
+
+  <style>
+    :root {
+      /* Theme RGB triplets for clean alpha channel composition */
+      --bg-base: 14, 18, 27;
+      --bg-grad-1: 30, 58, 108;
+      --bg-grad-2: 18, 86, 104;
+      --card-rgb: 26, 33, 48;
+      --dial-rgb: 20, 26, 39;
+      --text-rgb: 241, 245, 249;
+      --muted-rgb: 148, 163, 184;
+      --border-rgb: 148, 163, 184;
+      --accent-rgb: 56, 189, 248;
+      --warn-rgb: 251, 191, 36;
+      --danger-rgb: 248, 113, 113;
+      --good-rgb: 52, 211, 153;
+
+      /* Alpha channels (0.0 - 1.0) */
+      --alpha-card: 0.72;
+      --alpha-dial: 0.78;
+      --alpha-text: 0.96;
+      --alpha-muted: 0.72;
+      --alpha-border: 0.16;
+      --alpha-ambient: 0.55;
+      --blur-card: 18px;
+
+      /* Typography */
+      --font-clock: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      --font-ui: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      --clock-weight: 500;
+      --digital-scale: 1;
+
+      /* Computed colors */
+      --c-bg: rgb(var(--bg-base));
+      --c-card: rgba(var(--card-rgb), var(--alpha-card));
+      --c-dial: rgba(var(--dial-rgb), var(--alpha-dial));
+      --c-text: rgba(var(--text-rgb), var(--alpha-text));
+      --c-muted: rgba(var(--muted-rgb), calc(var(--alpha-text) * var(--alpha-muted)));
+      --c-border: rgba(var(--border-rgb), var(--alpha-border));
+      --c-accent: rgba(var(--accent-rgb), var(--alpha-text));
+      --c-accent-soft: rgba(var(--accent-rgb), 0.16);
+      --c-shadow: 0 20px 50px rgba(0, 0, 0, 0.32);
+
+      --radius-lg: 24px;
+      --radius-md: 16px;
+      --radius-sm: 12px;
+      --transition-theme: background-color 0.45s ease, color 0.35s ease, border-color 0.35s ease;
+    }
+
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html, body {
+      height: 100%;
+      width: 100%;
+      overflow-x: hidden;
+      background-color: var(--c-bg);
+      color: var(--c-text);
+      font-family: var(--font-ui);
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      user-select: none;
+      transition: var(--transition-theme);
+    }
+
+    /* Ambient / Custom Background Layer */
+    .bg-layer {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+      overflow: hidden;
+      background-color: var(--c-bg);
+      transition: background-color 0.5s ease;
+    }
+
+    .bg-gradient {
+      position: absolute;
+      inset: -15%;
+      opacity: var(--alpha-ambient);
+      transition: opacity 0.45s ease, background 0.6s ease;
+      background:
+        radial-gradient(circle at 18% 22%, rgba(var(--bg-grad-1), 0.72) 0%, transparent 52%),
+        radial-gradient(circle at 82% 76%, rgba(var(--bg-grad-2), 0.58) 0%, transparent 54%),
+        radial-gradient(circle at 50% 50%, rgba(var(--accent-rgb), 0.12) 0%, transparent 65%);
+      filter: blur(32px);
+    }
+
+    .bg-custom-image {
+      position: absolute;
+      inset: 0;
+      background-size: cover;
+      background-position: center;
+      opacity: 0;
+      transition: opacity 0.5s ease;
+    }
+
+    .bg-custom-image.active {
+      opacity: var(--alpha-ambient);
+    }
+
+    /* Subtle noise grain for premium depth */
+    .bg-grain {
+      position: absolute;
+      inset: 0;
+      opacity: 0.025;
+      background-image: radial-gradient(rgba(var(--text-rgb), 0.7) 0.5px, transparent 0.5px);
+      background-size: 16px 16px;
+    }
+
+    /* Main Layout */
+    .app-shell {
+      position: relative;
+      z-index: 1;
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      padding: clamp(14px, 2.2vw, 28px);
+      gap: clamp(12px, 1.8vw, 22px);
+      max-width: 1680px;
+      margin: 0 auto;
+    }
+
+    /* Top Status / Utility Bar */
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .location-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 16px;
+      border-radius: 999px;
+      background: var(--c-card);
+      border: 1px solid var(--c-border);
+      backdrop-filter: blur(var(--blur-card));
+      -webkit-backdrop-filter: blur(var(--blur-card));
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    }
+
+    .pulse-dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: rgb(var(--good-rgb));
+      box-shadow: 0 0 0 0 rgba(var(--good-rgb), 0.55);
+      animation: pulse 2.6s infinite;
+      flex-shrink: 0;
+    }
+
+    .pulse-dot.offline {
+      background: rgb(var(--warn-rgb));
+      animation: none;
+    }
+
+    @keyframes pulse {
+      0% { box-shadow: 0 0 0 0 rgba(var(--good-rgb), 0.55); }
+      70% { box-shadow: 0 0 0 8px rgba(var(--good-rgb), 0); }
+      100% { box-shadow: 0 0 0 0 rgba(var(--good-rgb), 0); }
+    }
+
+    .location-title {
+      font-weight: 600;
+      font-size: 0.95rem;
+      letter-spacing: 0.01em;
+    }
+
+    .location-sub {
+      font-size: 0.82rem;
+      color: var(--c-muted);
+    }
+
+    .topbar-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .icon-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      min-height: 42px;
+      padding: 0 14px;
+      border-radius: 999px;
+      background: var(--c-card);
+      border: 1px solid var(--c-border);
+      color: var(--c-text);
+      font-family: var(--font-ui);
+      font-size: 0.86rem;
+      font-weight: 500;
+      cursor: pointer;
+      backdrop-filter: blur(var(--blur-card));
+      -webkit-backdrop-filter: blur(var(--blur-card));
+      transition: transform 0.15s ease, background-color 0.2s ease, border-color 0.2s ease;
+    }
+
+    .icon-btn:hover {
+      border-color: rgba(var(--accent-rgb), 0.55);
+      transform: translateY(-1px);
+    }
+
+    .icon-btn:active {
+      transform: scale(0.97);
+    }
+
+    .icon-btn.active {
+      background: var(--c-accent-soft);
+      border-color: rgba(var(--accent-rgb), 0.65);
+      color: var(--c-accent);
+    }
+
+    .icon-btn svg {
+      width: 17px;
+      height: 17px;
+      flex-shrink: 0;
+    }
+
+    /* NWS Alert Banner */
+    .alert-banner {
+      display: none;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 18px;
+      border-radius: var(--radius-md);
+      background: rgba(var(--warn-rgb), 0.16);
+      border: 1px solid rgba(var(--warn-rgb), 0.45);
+      backdrop-filter: blur(var(--blur-card));
+      font-size: 0.92rem;
+      line-height: 1.35;
+    }
+
+    .alert-banner.visible {
+      display: flex;
+    }
+
+    .alert-banner.severe {
+      background: rgba(var(--danger-rgb), 0.18);
+      border-color: rgba(var(--danger-rgb), 0.5);
+    }
+
+    .alert-badge {
+      padding: 3px 10px;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      background: rgba(var(--warn-rgb), 0.28);
+      flex-shrink: 0;
+    }
+
+    .alert-banner.severe .alert-badge {
+      background: rgba(var(--danger-rgb), 0.3);
+    }
+
+    /* Main Dashboard Grid */
+    .dashboard-grid {
+      flex: 1;
+      display: grid;
+      grid-template-columns: minmax(320px, 1.05fr) minmax(340px, 1.15fr);
+      gap: clamp(14px, 2vw, 24px);
+      align-items: stretch;
+    }
+
+    .panel {
+      background: var(--c-card);
+      border: 1px solid var(--c-border);
+      border-radius: var(--radius-lg);
+      backdrop-filter: blur(var(--blur-card));
+      -webkit-backdrop-filter: blur(var(--blur-card));
+      box-shadow: var(--c-shadow);
+      padding: clamp(18px, 2.5vw, 32px);
+      display: flex;
+      flex-direction: column;
+      transition: var(--transition-theme), box-shadow 0.35s ease;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* Clock Panel */
+    .clock-panel {
+      justify-content: space-between;
+      align-items: center;
+      text-align: center;
+      gap: clamp(16px, 2vw, 26px);
+    }
+
+    .clock-panel-header {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 0.84rem;
+      color: var(--c-muted);
+    }
+
+    .tz-tag {
+      padding: 4px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--c-border);
+      font-size: 0.78rem;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+    }
+
+    .clock-stage {
+      flex: 1;
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: clamp(16px, 2.2vw, 28px);
+    }
+
+    .clock-stage.side-by-side {
+      flex-direction: row;
+      flex-wrap: wrap;
+      justify-content: space-evenly;
+    }
+
+    /* Analog Clock */
+    .analog-wrap {
+      position: relative;
+      width: clamp(210px, 24vw, 330px);
+      aspect-ratio: 1;
+      flex-shrink: 0;
+    }
+
+    .analog-svg {
+      width: 100%;
+      height: 100%;
+      display: block;
+      filter: drop-shadow(0 12px 28px rgba(0, 0, 0, 0.22));
+    }
+
+    .dial-bg {
+      fill: var(--c-dial);
+      stroke: var(--c-border);
+      stroke-width: 1.5;
+      transition: fill 0.35s ease, stroke 0.35s ease;
+    }
+
+    .dial-inner-ring {
+      fill: none;
+      stroke: rgba(var(--border-rgb), calc(var(--alpha-border) * 0.7));
+      stroke-width: 0.75;
+    }
+
+    .tick-major {
+      stroke: rgba(var(--text-rgb), calc(var(--alpha-text) * 0.78));
+      stroke-width: 2.2;
+      stroke-linecap: round;
+    }
+
+    .tick-minor {
+      stroke: rgba(var(--border-rgb), calc(var(--alpha-border) * 1.9));
+      stroke-width: 1.1;
+      stroke-linecap: round;
+    }
+
+    .dial-numeral {
+      fill: rgba(var(--text-rgb), calc(var(--alpha-text) * 0.84));
+      font-family: var(--font-clock);
+      font-weight: var(--clock-weight);
+      font-size: 13px;
+      text-anchor: middle;
+      dominant-baseline: central;
+    }
+
+    .dial-brand {
+      fill: var(--c-muted);
+      font-family: var(--font-ui);
+      font-size: 7.5px;
+      letter-spacing: 0.18em;
+      text-anchor: middle;
+      text-transform: uppercase;
+    }
+
+    .hand-hour {
+      stroke: var(--c-text);
+      stroke-width: 5.5;
+      stroke-linecap: round;
+    }
+
+    .hand-minute {
+      stroke: var(--c-text);
+      stroke-width: 3.6;
+      stroke-linecap: round;
+    }
+
+    .hand-second {
+      stroke: rgb(var(--accent-rgb));
+      stroke-opacity: var(--alpha-text);
+      stroke-width: 1.6;
+      stroke-linecap: round;
+    }
+
+    .center-cap-outer {
+      fill: var(--c-text);
+    }
+
+    .center-cap-inner {
+      fill: rgb(var(--accent-rgb));
+    }
+
+    /* Digital Clock */
+    .digital-block {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .digital-time-row {
+      display: flex;
+      align-items: baseline;
+      justify-content: center;
+      gap: 8px;
+      font-family: var(--font-clock);
+      font-weight: var(--clock-weight);
+      font-variant-numeric: tabular-nums;
+      line-height: 1;
+      letter-spacing: -0.02em;
+    }
+
+    .digital-hm {
+      font-size: calc(clamp(3rem, 5.8vw, 5.2rem) * var(--digital-scale));
+      color: var(--c-text);
+    }
+
+    .digital-side {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 2px;
+      font-family: var(--font-clock);
+    }
+
+    .digital-sec {
+      font-size: calc(clamp(1.25rem, 2.2vw, 1.95rem) * var(--digital-scale));
+      color: var(--c-accent);
+      font-weight: 500;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .digital-ampm {
+      font-size: calc(clamp(0.8rem, 1.2vw, 1.02rem) * var(--digital-scale));
+      color: var(--c-muted);
+      font-weight: 600;
+      letter-spacing: 0.08em;
+    }
+
+    .date-display {
+      font-size: clamp(1rem, 1.5vw, 1.25rem);
+      font-weight: 500;
+      color: var(--c-text);
+      opacity: 0.9;
+      margin-top: 4px;
+    }
+
+    .sun-daylight-strip {
+      width: 100%;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      padding-top: 14px;
+      border-top: 1px solid var(--c-border);
+      font-size: 0.85rem;
+    }
+
+    .mini-stat {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      align-items: center;
+    }
+
+    .mini-stat-label {
+      font-size: 0.74rem;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      color: var(--c-muted);
+    }
+
+    .mini-stat-val {
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* Weather Panel */
+    .weather-panel {
+      gap: clamp(14px, 1.8vw, 22px);
+      justify-content: space-between;
+    }
+
+    .weather-hero {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .weather-main-left {
+      display: flex;
+      align-items: center;
+      gap: clamp(14px, 2vw, 22px);
+    }
+
+    .weather-icon-hero {
+      width: clamp(68px, 7.5vw, 96px);
+      height: clamp(68px, 7.5vw, 96px);
+      flex-shrink: 0;
+    }
+
+    .temp-hero-wrap {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .temp-hero {
+      font-family: var(--font-clock);
+      font-weight: var(--clock-weight);
+      font-size: clamp(3rem, 5.2vw, 4.5rem);
+      line-height: 0.98;
+      letter-spacing: -0.03em;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .weather-cond {
+      font-size: clamp(1.02rem, 1.5vw, 1.24rem);
+      font-weight: 500;
+      color: var(--c-text);
+    }
+
+    .weather-feels {
+      font-size: 0.88rem;
+      color: var(--c-muted);
+    }
+
+    .weather-meta-right {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 6px;
+      text-align: right;
+    }
+
+    .unit-toggle {
+      display: inline-flex;
+      border-radius: 999px;
+      border: 1px solid var(--c-border);
+      overflow: hidden;
+      background: rgba(var(--bg-base), 0.25);
+    }
+
+    .unit-toggle button {
+      border: none;
+      background: transparent;
+      color: var(--c-muted);
+      padding: 6px 12px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: var(--font-ui);
+    }
+
+    .unit-toggle button.active {
+      background: var(--c-accent-soft);
+      color: var(--c-accent);
+    }
+
+    .weather-updated {
+      font-size: 0.78rem;
+      color: var(--c-muted);
+    }
+
+    /* Metrics Grid */
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .metric-card {
+      padding: 12px 14px;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--c-border);
+      background: rgba(var(--dial-rgb), calc(var(--alpha-dial) * 0.55));
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .metric-label {
+      font-size: 0.74rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--c-muted);
+    }
+
+    .metric-value {
+      font-size: 1.08rem;
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .metric-sub {
+      font-size: 0.76rem;
+      color: var(--c-muted);
+    }
+
+    /* Forecast Sections */
+    .forecast-block {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .section-label {
+      font-size: 0.76rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--c-muted);
+      font-weight: 600;
+    }
+
+    .hourly-strip {
+      display: grid;
+      grid-template-columns: repeat(8, minmax(64px, 1fr));
+      gap: 8px;
+      overflow-x: auto;
+      padding-bottom: 4px;
+      scrollbar-width: thin;
+    }
+
+    .hour-item {
+      padding: 10px 6px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--c-border);
+      background: rgba(var(--dial-rgb), calc(var(--alpha-dial) * 0.42));
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 5px;
+      text-align: center;
+    }
+
+    .hour-time {
+      font-size: 0.75rem;
+      color: var(--c-muted);
+      font-weight: 500;
+    }
+
+    .hour-icon {
+      width: 26px;
+      height: 26px;
+    }
+
+    .hour-temp {
+      font-size: 0.94rem;
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .hour-rain {
+      font-size: 0.7rem;
+      color: rgb(var(--accent-rgb));
+      min-height: 14px;
+    }
+
+    .daily-list {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .day-item {
+      padding: 10px 10px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--c-border);
+      background: rgba(var(--dial-rgb), calc(var(--alpha-dial) * 0.42));
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 5px;
+      text-align: center;
+    }
+
+    .day-name {
+      font-size: 0.8rem;
+      font-weight: 600;
+    }
+
+    .day-icon {
+      width: 28px;
+      height: 28px;
+    }
+
+    .day-temps {
+      font-size: 0.85rem;
+      font-variant-numeric: tabular-nums;
+      display: flex;
+      gap: 6px;
+    }
+
+    .day-hi {
+      font-weight: 600;
+    }
+
+    .day-lo {
+      color: var(--c-muted);
+    }
+
+    /* Settings Drawer */
+    .drawer-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 40;
+      background: rgba(0, 0, 0, 0.45);
+      backdrop-filter: blur(4px);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.28s ease;
+    }
+
+    .drawer-backdrop.open {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .settings-drawer {
+      position: fixed;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 50;
+      width: min(440px, 94vw);
+      background: rgba(var(--card-rgb), 0.95);
+      color: rgb(var(--text-rgb));
+      border-left: 1px solid var(--c-border);
+      backdrop-filter: blur(26px);
+      -webkit-backdrop-filter: blur(26px);
+      box-shadow: -16px 0 48px rgba(0, 0, 0, 0.35);
+      transform: translateX(102%);
+      transition: transform 0.32s cubic-bezier(0.22, 1, 0.36, 1);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .settings-drawer.open {
+      transform: translateX(0);
+    }
+
+    .drawer-header {
+      padding: 18px 22px;
+      border-bottom: 1px solid var(--c-border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .drawer-title {
+      font-size: 1.08rem;
+      font-weight: 700;
+    }
+
+    .drawer-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: 18px 22px 28px;
+      display: flex;
+      flex-direction: column;
+      gap: 22px;
+    }
+
+    .setting-group {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .setting-group-title {
+      font-size: 0.76rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: rgba(var(--muted-rgb), 0.9);
+      font-weight: 700;
+    }
+
+    /* Theme Grid */
+    .theme-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .theme-chip {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      border: 1px solid var(--c-border);
+      background: rgba(var(--dial-rgb), 0.45);
+      color: rgb(var(--text-rgb));
+      font-family: var(--font-ui);
+      font-size: 0.84rem;
+      font-weight: 500;
+      cursor: pointer;
+      text-align: left;
+      transition: border-color 0.2s ease, transform 0.12s ease;
+    }
+
+    .theme-chip:hover {
+      border-color: rgba(var(--accent-rgb), 0.65);
+    }
+
+    .theme-chip.active {
+      border-color: rgb(var(--accent-rgb));
+      box-shadow: inset 0 0 0 1px rgb(var(--accent-rgb));
+    }
+
+    .theme-swatch {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      border: 1px solid rgba(255, 255, 255, 0.22);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .theme-swatch-accent {
+      position: absolute;
+      right: 0;
+      bottom: 0;
+      width: 11px;
+      height: 11px;
+      border-top-left-radius: 6px;
+    }
+
+    .theme-meta {
+      display: flex;
+      flex-direction: column;
+      line-height: 1.2;
+    }
+
+    .theme-mode-tag {
+      font-size: 0.68rem;
+      opacity: 0.68;
+    }
+
+    /* Form Controls inside Drawer */
+    .control-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      font-size: 0.88rem;
+    }
+
+    .control-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      font-size: 0.85rem;
+    }
+
+    .control-label-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .val-badge {
+      font-variant-numeric: tabular-nums;
+      font-size: 0.78rem;
+      color: rgb(var(--accent-rgb));
+      font-weight: 600;
+    }
+
+    select.styled-select,
+    input.styled-input {
+      width: 100%;
+      min-height: 40px;
+      padding: 8px 12px;
+      border-radius: 10px;
+      border: 1px solid var(--c-border);
+      background: rgba(var(--bg-base), 0.55);
+      color: rgb(var(--text-rgb));
+      font-family: var(--font-ui);
+      font-size: 0.86rem;
+      outline: none;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      accent-color: rgb(var(--accent-rgb));
+      cursor: pointer;
+      height: 6px;
+    }
+
+    .segmented {
+      display: grid;
+      grid-auto-flow: column;
+      grid-auto-columns: 1fr;
+      border-radius: 10px;
+      border: 1px solid var(--c-border);
+      overflow: hidden;
+      background: rgba(var(--bg-base), 0.35);
+    }
+
+    .segmented button {
+      border: none;
+      background: transparent;
+      color: rgba(var(--muted-rgb), 0.9);
+      padding: 9px 8px;
+      font-size: 0.8rem;
+      font-weight: 500;
+      cursor: pointer;
+      font-family: var(--font-ui);
+    }
+
+    .segmented button.active {
+      background: rgba(var(--accent-rgb), 0.22);
+      color: rgb(var(--text-rgb));
+      font-weight: 600;
+    }
+
+    .accent-dots {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .accent-dot {
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      border: 2px solid transparent;
+      cursor: pointer;
+      transition: transform 0.15s ease;
+    }
+
+    .accent-dot:hover {
+      transform: scale(1.1);
+    }
+
+    .accent-dot.active {
+      border-color: rgb(var(--text-rgb));
+      box-shadow: 0 0 0 2px rgba(var(--bg-base), 0.8);
+    }
+
+    .toggle-switch {
+      position: relative;
+      width: 46px;
+      height: 26px;
+      flex-shrink: 0;
+    }
+
+    .toggle-switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .toggle-slider {
+      position: absolute;
+      inset: 0;
+      border-radius: 999px;
+      background: rgba(var(--border-rgb), 0.35);
+      cursor: pointer;
+      transition: background-color 0.2s ease;
+    }
+
+    .toggle-slider::before {
+      content: '';
+      position: absolute;
+      left: 3px;
+      top: 3px;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: #fff;
+      transition: transform 0.2s ease;
+    }
+
+    .toggle-switch input:checked + .toggle-slider {
+      background: rgb(var(--accent-rgb));
+    }
+
+    .toggle-switch input:checked + .toggle-slider::before {
+      transform: translateX(20px);
+    }
+
+    .drawer-footer-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      padding-top: 8px;
+    }
+
+    .btn-secondary {
+      min-height: 42px;
+      border-radius: 10px;
+      border: 1px solid var(--c-border);
+      background: rgba(var(--dial-rgb), 0.55);
+      color: rgb(var(--text-rgb));
+      font-family: var(--font-ui);
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .btn-secondary:hover {
+      border-color: rgba(var(--accent-rgb), 0.65);
+    }
+
+    /* Responsive Tablet Portrait & Small Screens */
+    @media (max-width: 1024px) {
+      .dashboard-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .clock-stage {
+        flex-direction: row;
+        flex-wrap: wrap;
+        justify-content: space-evenly;
+      }
+
+      .metrics-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 640px) {
+      .clock-stage {
+        flex-direction: column;
+      }
+
+      .hourly-strip {
+        grid-template-columns: repeat(8, 72px);
+      }
+
+      .daily-list {
+        grid-template-columns: repeat(5, minmax(84px, 1fr));
+        overflow-x: auto;
+      }
+
+      .hide-xs {
+        display: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="bg-layer">
+    <div class="bg-custom-image" id="bgCustomImage"></div>
+    <div class="bg-gradient" id="bgGradient"></div>
+    <div class="bg-grain"></div>
+  </div>
+
+  <main class="app-shell">
+    <!-- Top Bar -->
+    <header class="topbar">
+      <div class="location-pill">
+        <span class="pulse-dot" id="statusDot" title="Live weather connection"></span>
+        <div>
+          <div class="location-title">Harleton, Texas</div>
+          <div class="location-sub" id="locationSub">Harrison County &bull; 32.68&deg;N, 94.57&deg;W</div>
+        </div>
+      </div>
+
+      <div class="topbar-actions">
+        <button class="icon-btn" id="btnAutoThemeBadge" title="Toggle Auto Sunrise/Sunset Theme">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="4"/>
+            <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/>
+          </svg>
+          <span class="hide-xs" id="themePillLabel">Midnight Slate</span>
+        </button>
+
+        <button class="icon-btn" id="btnWakeLock" title="Keep tablet screen awake">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+            <circle cx="12" cy="12" r="3"/>
+          </svg>
+          <span class="hide-xs">Keep Awake</span>
+        </button>
+
+        <button class="icon-btn" id="btnRefreshWeather" title="Refresh weather now">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M23 4v6h-6M1 20v-6h6"/>
+            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+          </svg>
+        </button>
+
+        <button class="icon-btn" id="btnFullscreen" title="Toggle Fullscreen">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>
+          </svg>
+        </button>
+
+        <button class="icon-btn" id="btnOpenSettings" title="Customize Theme, Font &amp; Alpha">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="3"/>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+          </svg>
+          <span>Customize</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Active Weather Alert Banner -->
+    <div class="alert-banner" id="alertBanner" role="status">
+      <span class="alert-badge" id="alertBadge">Weather Alert</span>
+      <span id="alertText"></span>
+    </div>
+
+    <!-- Main Dashboard -->
+    <section class="dashboard-grid">
+      <!-- Clock Panel (Analog + Digital) -->
+      <article class="panel clock-panel">
+        <div class="clock-panel-header">
+          <span>Local Time &bull; Harleton, TX</span>
+          <span class="tz-tag" id="tzTag">CST</span>
+        </div>
+
+        <div class="clock-stage" id="clockStage">
+          <!-- Analog Clock -->
+          <div class="analog-wrap">
+            <svg class="analog-svg" viewBox="0 0 220 220" aria-label="Analog Clock">
+              <circle class="dial-bg" cx="110" cy="110" r="104" />
+              <circle class="dial-inner-ring" cx="110" cy="110" r="76" />
+              <g id="dialTicks"></g>
+              <g id="dialNumerals"></g>
+              <text class="dial-brand" x="110" y="74">HARLETON TX</text>
+
+              <line id="hourHand" class="hand-hour" x1="110" y1="118" x2="110" y2="58" />
+              <line id="minuteHand" class="hand-minute" x1="110" y1="122" x2="110" y2="34" />
+              <line id="secondHand" class="hand-second" x1="110" y1="128" x2="110" y2="26" />
+
+              <circle class="center-cap-outer" cx="110" cy="110" r="5.5" />
+              <circle class="center-cap-inner" cx="110" cy="110" r="2.6" />
+            </svg>
+          </div>
+
+          <!-- Digital Clock -->
+          <div class="digital-block">
+            <div class="digital-time-row">
+              <span class="digital-hm" id="digitalHM">12:00</span>
+              <div class="digital-side">
+                <span class="digital-sec" id="digitalSec">00</span>
+                <span class="digital-ampm" id="digitalAmPm">AM</span>
+              </div>
+            </div>
+            <div class="date-display" id="dateDisplay">Monday, November 16, 2026</div>
+          </div>
+        </div>
+
+        <div class="sun-daylight-strip">
+          <div class="mini-stat">
+            <span class="mini-stat-label">Sunrise</span>
+            <span class="mini-stat-val" id="sunriseVal">--:--</span>
+          </div>
+          <div class="mini-stat">
+            <span class="mini-stat-label">Daylight</span>
+            <span class="mini-stat-val" id="daylightVal">--h --m</span>
+          </div>
+          <div class="mini-stat">
+            <span class="mini-stat-label">Sunset</span>
+            <span class="mini-stat-val" id="sunsetVal">--:--</span>
+          </div>
+        </div>
+      </article>
+
+      <!-- Weather Panel -->
+      <article class="panel weather-panel">
+        <div class="weather-hero">
+          <div class="weather-main-left">
+            <div class="weather-icon-hero" id="weatherHeroIcon"></div>
+            <div class="temp-hero-wrap">
+              <div class="temp-hero" id="currentTemp">--&deg;</div>
+              <div class="weather-cond" id="currentCond">Loading Harleton weather&hellip;</div>
+              <div class="weather-feels" id="currentFeels">Feels like --&deg; &bull; H: --&deg; L: --&deg;</div>
+            </div>
+          </div>
+
+          <div class="weather-meta-right">
+            <div class="unit-toggle" role="group" aria-label="Temperature Unit">
+              <button type="button" id="btnUnitF" class="active">&deg;F</button>
+              <button type="button" id="btnUnitC">&deg;C</button>
+            </div>
+            <div class="weather-updated" id="weatherUpdated">Fetching forecast&hellip;</div>
+          </div>
+        </div>
+
+        <div class="metrics-grid">
+          <div class="metric-card">
+            <span class="metric-label">Humidity</span>
+            <span class="metric-value" id="metricHumidity">--%</span>
+            <span class="metric-sub" id="metricClouds">Cloud cover --%</span>
+          </div>
+          <div class="metric-card">
+            <span class="metric-label">Wind</span>
+            <span class="metric-value" id="metricWind">-- mph</span>
+            <span class="metric-sub" id="metricWindDir">Direction --</span>
+          </div>
+          <div class="metric-card">
+            <span class="metric-label">Pressure</span>
+            <span class="metric-value" id="metricPressure">-- inHg</span>
+            <span class="metric-sub" id="metricPressureHpa">-- hPa</span>
+          </div>
+          <div class="metric-card">
+            <span class="metric-label">Rain / UV</span>
+            <span class="metric-value" id="metricRain">--%</span>
+            <span class="metric-sub" id="metricUV">Max UV --</span>
+          </div>
+        </div>
+
+        <div class="forecast-block">
+          <div class="section-label">Next Hours in Harleton</div>
+          <div class="hourly-strip" id="hourlyStrip"></div>
+        </div>
+
+        <div class="forecast-block">
+          <div class="section-label">5-Day Outlook</div>
+          <div class="daily-list" id="dailyList"></div>
+        </div>
+      </article>
+    </section>
+  </main>
+
+  <!-- Customization Drawer -->
+  <div class="drawer-backdrop" id="drawerBackdrop"></div>
+  <aside class="settings-drawer" id="settingsDrawer" aria-label="Appearance and Clock Settings">
+    <div class="drawer-header">
+      <div class="drawer-title">Customize Dashboard</div>
+      <button class="icon-btn" id="btnCloseSettings" style="min-height: 36px; padding: 0 12px;">Done</button>
+    </div>
+
+    <div class="drawer-body">
+      <!-- Themes -->
+      <div class="setting-group">
+        <div class="setting-group-title">Themes &mdash; Dark &amp; Light Variances</div>
+        <div class="theme-grid" id="themeGrid"></div>
+      </div>
+
+      <!-- Auto Day/Night -->
+      <div class="setting-group">
+        <div class="control-row">
+          <div>
+            <div style="font-weight: 600;">Auto Sunrise / Sunset Switch</div>
+            <div style="font-size: 0.78rem; color: rgba(var(--muted-rgb), 0.9);">Follows Harleton daylight hours</div>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="chkAutoTheme" />
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+
+        <div id="autoPairControls" style="display: none; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 4px;">
+          <div class="control-stack">
+            <span style="font-size: 0.76rem; opacity: 0.8;">Daytime Light Theme</span>
+            <select class="styled-select" id="selAutoDay"></select>
+          </div>
+          <div class="control-stack">
+            <span style="font-size: 0.76rem; opacity: 0.8;">Nighttime Dark Theme</span>
+            <select class="styled-select" id="selAutoNight"></select>
+          </div>
+        </div>
+      </div>
+
+      <!-- Accent & Backdrop -->
+      <div class="setting-group">
+        <div class="setting-group-title">Accent &amp; Backdrop</div>
+        <div class="accent-dots" id="accentDots"></div>
+
+        <div class="control-stack" style="margin-top: 6px;">
+          <span style="font-size: 0.8rem;">Backdrop Mode</span>
+          <div class="segmented" id="segBackdropMode">
+            <button type="button" data-val="ambient">Ambient Glow</button>
+            <button type="button" data-val="weather">Weather Tint</button>
+            <button type="button" data-val="solid">Clean Solid</button>
+            <button type="button" data-val="image">Wallpaper</button>
+          </div>
+        </div>
+
+        <div class="control-stack" id="wallpaperUrlWrap" style="display: none;">
+          <span style="font-size: 0.78rem;">Custom Wallpaper Image URL</span>
+          <input type="url" class="styled-input" id="inpWallpaperUrl" placeholder="https://example.com/photo.jpg" />
+        </div>
+      </div>
+
+      <!-- Alpha Channels -->
+      <div class="setting-group">
+        <div class="control-label-row">
+          <div class="setting-group-title">Alpha Channels &amp; Glass</div>
+          <button type="button" id="btnMatchThemeAlpha" style="background: none; border: none; color: rgb(var(--accent-rgb)); font-size: 0.76rem; font-weight: 600; cursor: pointer;">Match Theme</button>
+        </div>
+
+        <div class="control-stack">
+          <div class="control-label-row">
+            <span>Card Surface Alpha</span>
+            <span class="val-badge" id="valAlphaCard">72%</span>
+          </div>
+          <input type="range" id="rngAlphaCard" min="0" max="100" value="72" />
+        </div>
+
+        <div class="control-stack">
+          <div class="control-label-row">
+            <span>Analog Dial Alpha</span>
+            <span class="val-badge" id="valAlphaDial">78%</span>
+          </div>
+          <input type="range" id="rngAlphaDial" min="0" max="100" value="78" />
+        </div>
+
+        <div class="control-stack">
+          <div class="control-label-row">
+            <span>Clock &amp; Text Alpha</span>
+            <span class="val-badge" id="valAlphaText">96%</span>
+          </div>
+          <input type="range" id="rngAlphaText" min="25" max="100" value="96" />
+        </div>
+
+        <div class="control-stack">
+          <div class="control-label-row">
+            <span>Borders &amp; Tick Marks Alpha</span>
+            <span class="val-badge" id="valAlphaBorder">16%</span>
+          </div>
+          <input type="range" id="rngAlphaBorder" min="0" max="60" value="16" />
+        </div>
+
+        <div class="control-stack">
+          <div class="control-label-row">
+            <span>Ambient / Wallpaper Alpha</span>
+            <span class="val-badge" id="valAlphaAmbient">55%</span>
+          </div>
+          <input type="range" id="rngAlphaAmbient" min="0" max="100" value="55" />
+        </div>
+
+        <div class="control-stack">
+          <div class="control-label-row">
+            <span>Glass Blur</span>
+            <span class="val-badge" id="valBlur">18px</span>
+          </div>
+          <input type="range" id="rngBlur" min="0" max="36" value="18" />
+        </div>
+      </div>
+
+      <!-- Typography / Fonts -->
+      <div class="setting-group">
+        <div class="setting-group-title">Typography &amp; Fonts</div>
+
+        <div class="control-stack">
+          <span>Clock &amp; Temperature Font</span>
+          <select class="styled-select" id="selClockFont">
+            <option value="'Outfit', -apple-system, BlinkMacSystemFont, sans-serif">Outfit (Modern Geometric)</option>
+            <option value="'Space Grotesk', 'Segoe UI', sans-serif">Space Grotesk (Technical)</option>
+            <option value="'JetBrains Mono', ui-monospace, SFMono-Regular, monospace">JetBrains Mono (Precision Mono)</option>
+            <option value="'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif">DM Sans (Clean Humanist)</option>
+            <option value="'Playfair Display', Georgia, serif">Playfair Display (Classic Serif)</option>
+            <option value="'Instrument Serif', Georgia, serif">Instrument Serif (Editorial)</option>
+            <option value="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif">System Native Sans</option>
+          </select>
+        </div>
+
+        <div class="control-stack">
+          <span>Interface &amp; Weather Font</span>
+          <select class="styled-select" id="selUiFont">
+            <option value="'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif">DM Sans (Balanced)</option>
+            <option value="'Outfit', -apple-system, BlinkMacSystemFont, sans-serif">Outfit (Geometric)</option>
+            <option value="'Space Grotesk', 'Segoe UI', sans-serif">Space Grotesk (Modern)</option>
+            <option value="'JetBrains Mono', ui-monospace, monospace">JetBrains Mono (Data)</option>
+            <option value="Georgia, 'Times New Roman', serif">Classic Serif</option>
+            <option value="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif">System Native</option>
+          </select>
+        </div>
+
+        <div class="control-stack">
+          <span>Clock Font Weight</span>
+          <div class="segmented" id="segClockWeight">
+            <button type="button" data-val="300">Light</button>
+            <button type="button" data-val="400">Regular</button>
+            <button type="button" data-val="500">Medium</button>
+            <button type="button" data-val="700">Bold</button>
+          </div>
+        </div>
+
+        <div class="control-stack">
+          <div class="control-label-row">
+            <span>Digital Clock Size</span>
+            <span class="val-badge" id="valDigitalScale">100%</span>
+          </div>
+          <input type="range" id="rngDigitalScale" min="75" max="130" value="100" />
+        </div>
+      </div>
+
+      <!-- Clock Options -->
+      <div class="setting-group">
+        <div class="setting-group-title">Analog &amp; Digital Clock Options</div>
+
+        <div class="control-stack">
+          <span>Clock Arrangement</span>
+          <div class="segmented" id="segClockLayout">
+            <button type="button" data-val="stacked">Stacked</button>
+            <button type="button" data-val="side">Side by Side</button>
+          </div>
+        </div>
+
+        <div class="control-stack">
+          <span>Analog Dial Style</span>
+          <div class="segmented" id="segDialStyle">
+            <button type="button" data-val="quarters">12 / 3 / 6 / 9</button>
+            <button type="button" data-val="all">All Numbers</button>
+            <button type="button" data-val="minimal">Ticks Only</button>
+          </div>
+        </div>
+
+        <div class="control-stack">
+          <span>Second Hand Motion</span>
+          <div class="segmented" id="segSecondMotion">
+            <button type="button" data-val="sweep">Smooth Sweep</button>
+            <button type="button" data-val="tick">1s Crisp Tick</button>
+          </div>
+        </div>
+
+        <div class="control-row">
+          <span>24-Hour Digital Format</span>
+          <label class="toggle-switch">
+            <input type="checkbox" id="chk24Hour" />
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+
+        <div class="control-row">
+          <span>Show Seconds in Digital</span>
+          <label class="toggle-switch">
+            <input type="checkbox" id="chkShowSeconds" checked />
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+      </div>
+
+      <div class="drawer-footer-actions">
+        <button type="button" class="btn-secondary" id="btnResetAll">Reset All Defaults</button>
+        <button type="button" class="btn-secondary" id="btnCloseDrawerBottom">Save &amp; Close</button>
+      </div>
+    </div>
+  </aside>
+
+  <script>
+    (() => {
+      'use strict';
+
+      // Harleton, Texas coordinates (Harrison County)
+      const HARLETON = {
+        lat: 32.6768,
+        lon: -94.5738,
+        tz: 'America/Chicago',
+        name: 'Harleton, Texas'
+      };
+
+      const THEMES = {
+        'midnight-slate': {
+          name: 'Midnight Slate',
+          mode: 'Dark',
+          swatch: '#0e121b',
+          swatchAccent: '#38bdf8',
+          vars: {
+            '--bg-base': '14, 18, 27',
+            '--bg-grad-1': '30, 58, 108',
+            '--bg-grad-2': '18, 86, 104',
+            '--card-rgb': '26, 33, 48',
+            '--dial-rgb': '18, 24, 36',
+            '--text-rgb': '241, 245, 249',
+            '--muted-rgb': '148, 163, 184',
+            '--border-rgb': '148, 163, 184',
+            '--accent-rgb': '56, 189, 248'
+          },
+          defaults: { alphaCard: 72, alphaDial: 78, alphaText: 96, alphaBorder: 16, alphaAmbient: 55, blur: 18 }
+        },
+        'oled-obsidian': {
+          name: 'OLED Obsidian',
+          mode: 'Dark',
+          swatch: '#000000',
+          swatchAccent: '#f59e0b',
+          vars: {
+            '--bg-base': '0, 0, 0',
+            '--bg-grad-1': '24, 24, 27',
+            '--bg-grad-2': '45, 28, 12',
+            '--card-rgb': '12, 12, 14',
+            '--dial-rgb': '6, 6, 8',
+            '--text-rgb': '244, 244, 245',
+            '--muted-rgb': '161, 161, 170',
+            '--border-rgb': '161, 161, 170',
+            '--accent-rgb': '245, 158, 11'
+          },
+          defaults: { alphaCard: 86, alphaDial: 92, alphaText: 94, alphaBorder: 14, alphaAmbient: 25, blur: 12 }
+        },
+        'piney-dusk': {
+          name: 'Piney Woods Dusk',
+          mode: 'Dark',
+          swatch: '#0d1b16',
+          swatchAccent: '#4ade80',
+          vars: {
+            '--bg-base': '13, 27, 22',
+            '--bg-grad-1': '20, 83, 45',
+            '--bg-grad-2': '19, 78, 74',
+            '--card-rgb': '20, 38, 31',
+            '--dial-rgb': '14, 28, 23',
+            '--text-rgb': '236, 253, 245',
+            '--muted-rgb': '148, 184, 166',
+            '--border-rgb': '134, 239, 172',
+            '--accent-rgb': '74, 222, 128'
+          },
+          defaults: { alphaCard: 70, alphaDial: 76, alphaText: 96, alphaBorder: 15, alphaAmbient: 60, blur: 18 }
+        },
+        'warm-ember': {
+          name: 'Warm Ember',
+          mode: 'Dark',
+          swatch: '#1b1210',
+          swatchAccent: '#fb923c',
+          vars: {
+            '--bg-base': '27, 18, 16',
+            '--bg-grad-1': '124, 45, 18',
+            '--bg-grad-2': '88, 28, 45',
+            '--card-rgb': '40, 26, 23',
+            '--dial-rgb': '29, 19, 17',
+            '--text-rgb': '255, 247, 237',
+            '--muted-rgb': '214, 179, 163',
+            '--border-rgb': '251, 146, 60',
+            '--accent-rgb': '251, 146, 60'
+          },
+          defaults: { alphaCard: 74, alphaDial: 80, alphaText: 95, alphaBorder: 18, alphaAmbient: 52, blur: 18 }
+        },
+        'daylight-paper': {
+          name: 'Daylight Paper',
+          mode: 'Light',
+          swatch: '#f4f1ea',
+          swatchAccent: '#2563eb',
+          vars: {
+            '--bg-base': '244, 241, 234',
+            '--bg-grad-1': '219, 234, 254',
+            '--bg-grad-2': '254, 243, 199',
+            '--card-rgb': '255, 253, 249',
+            '--dial-rgb': '248, 245, 238',
+            '--text-rgb': '28, 25, 23',
+            '--muted-rgb': '87, 83, 78',
+            '--border-rgb': '120, 113, 108',
+            '--accent-rgb': '37, 99, 235'
+          },
+          defaults: { alphaCard: 84, alphaDial: 88, alphaText: 96, alphaBorder: 16, alphaAmbient: 55, blur: 16 }
+        },
+        'pure-crisp': {
+          name: 'Pure Crisp',
+          mode: 'Light',
+          swatch: '#f8fafc',
+          swatchAccent: '#0284c7',
+          vars: {
+            '--bg-base': '241, 245, 249',
+            '--bg-grad-1': '186, 230, 253',
+            '--bg-grad-2': '224, 231, 255',
+            '--card-rgb': '255, 255, 255',
+            '--dial-rgb': '248, 250, 252',
+            '--text-rgb': '15, 23, 42',
+            '--muted-rgb': '71, 85, 105',
+            '--border-rgb': '100, 116, 139',
+            '--accent-rgb': '2, 132, 199'
+          },
+          defaults: { alphaCard: 80, alphaDial: 86, alphaText: 98, alphaBorder: 15, alphaAmbient: 58, blur: 18 }
+        },
+        'morning-meadow': {
+          name: 'Morning Meadow',
+          mode: 'Light',
+          swatch: '#edf3ed',
+          swatchAccent: '#15803d',
+          vars: {
+            '--bg-base': '237, 243, 237',
+            '--bg-grad-1': '187, 247, 208',
+            '--bg-grad-2': '204, 251, 241',
+            '--card-rgb': '249, 252, 249',
+            '--dial-rgb': '240, 247, 241',
+            '--text-rgb': '20, 42, 28',
+            '--muted-rgb': '75, 104, 84',
+            '--border-rgb': '74, 124, 89',
+            '--accent-rgb': '21, 128, 61'
+          },
+          defaults: { alphaCard: 82, alphaDial: 86, alphaText: 95, alphaBorder: 17, alphaAmbient: 55, blur: 16 }
+        },
+        'golden-hour': {
+          name: 'Golden Hour',
+          mode: 'Light',
+          swatch: '#fbf3e8',
+          swatchAccent: '#c2410c',
+          vars: {
+            '--bg-base': '251, 243, 232',
+            '--bg-grad-1': '254, 215, 170',
+            '--bg-grad-2': '254, 205, 211',
+            '--card-rgb': '255, 250, 244',
+            '--dial-rgb': '252, 242, 230',
+            '--text-rgb': '54, 32, 22',
+            '--muted-rgb': '124, 86, 66',
+            '--border-rgb': '180, 112, 74',
+            '--accent-rgb': '194, 65, 12'
+          },
+          defaults: { alphaCard: 82, alphaDial: 86, alphaText: 96, alphaBorder: 18, alphaAmbient: 60, blur: 16 }
+        }
+      };
+
+      const ACCENT_PRESETS = [
+        { id: 'theme', label: 'Theme Default', rgb: null, hex: 'conic-gradient(#38bdf8, #4ade80, #fb923c, #38bdf8)' },
+        { id: 'sky', label: 'Sky Blue', rgb: '56, 189, 248', hex: '#38bdf8' },
+        { id: 'cobalt', label: 'Cobalt', rgb: '59, 130, 246', hex: '#3b82f6' },
+        { id: 'emerald', label: 'Pine Green', rgb: '52, 211, 153', hex: '#34d399' },
+        { id: 'amber', label: 'Texas Gold', rgb: '245, 158, 11', hex: '#f59e0b' },
+        { id: 'coral', label: 'Sunset Coral', rgb: '249, 115, 22', hex: '#f97316' },
+        { id: 'rose', label: 'Crimson Rose', rgb: '244, 63, 94', hex: '#f43f5e' },
+        { id: 'violet', label: 'Twilight Violet', rgb: '167, 139, 250', hex: '#a78bfa' }
+      ];
+
+      const STORAGE_KEY = 'harleton_dashboard_settings_v1';
+
+      const DEFAULT_STATE = {
+        theme: 'midnight-slate',
+        autoTheme: false,
+        autoDayTheme: 'daylight-paper',
+        autoNightTheme: 'midnight-slate',
+        accentId: 'theme',
+        backdropMode: 'ambient',
+        wallpaperUrl: '',
+        alphaCard: 72,
+        alphaDial: 78,
+        alphaText: 96,
+        alphaBorder: 16,
+        alphaAmbient: 55,
+        blur: 18,
+        clockFont: "'Outfit', -apple-system, BlinkMacSystemFont, sans-serif",
+        uiFont: "'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif",
+        clockWeight: '500',
+        digitalScale: 100,
+        clockLayout: 'stacked',
+        dialStyle: 'quarters',
+        secondMotion: 'sweep',
+        use24Hour: false,
+        showSeconds: true,
+        tempUnit: 'F'
+      };
+
+      let state = loadSettings();
+      let weatherData = null;
+      let wakeLock = null;
+
+      function loadSettings() {
+        try {
+          const raw = localStorage.getItem(STORAGE_KEY);
+          if (!raw) return { ...DEFAULT_STATE };
+          return { ...DEFAULT_STATE, ...JSON.parse(raw) };
+        } catch {
+          return { ...DEFAULT_STATE };
+        }
+      }
+
+      function saveSettings() {
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+        } catch {
+          // ignore storage quota issues
+        }
+      }
+
+      // DOM refs
+      const $ = (id) => document.getElementById(id);
+
+      // Build static analog dial ticks & numerals
+      function buildDial() {
+        const ticksG = $('dialTicks');
+        const numsG = $('dialNumerals');
+        ticksG.innerHTML = '';
+        numsG.innerHTML = '';
+
+        for (let i = 0; i < 60; i++) {
+          const angle = (i * 6) * Math.PI / 180;
+          const isMajor = i % 5 === 0;
+          const rOuter = 96;
+          const rInner = isMajor ? 86 : 91.5;
+          const x1 = 110 + rOuter * Math.sin(angle);
+          const y1 = 110 - rOuter * Math.cos(angle);
+          const x2 = 110 + rInner * Math.sin(angle);
+          const y2 = 110 - rInner * Math.cos(angle);
+
+          const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+          line.setAttribute('x1', x1.toFixed(2));
+          line.setAttribute('y1', y1.toFixed(2));
+          line.setAttribute('x2', x2.toFixed(2));
+          line.setAttribute('y2', y2.toFixed(2));
+          line.setAttribute('class', isMajor ? 'tick-major' : 'tick-minor');
+          ticksG.appendChild(line);
+        }
+
+        if (state.dialStyle !== 'minimal') {
+          for (let h = 1; h <= 12; h++) {
+            if (state.dialStyle === 'quarters' && h % 3 !== 0) continue;
+            const angle = (h * 30) * Math.PI / 180;
+            const rNum = 72;
+            const x = 110 + rNum * Math.sin(angle);
+            const y = 110 - rNum * Math.cos(angle);
+            const txt = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+            txt.setAttribute('x', x.toFixed(2));
+            txt.setAttribute('y', y.toFixed(2));
+            txt.setAttribute('class', 'dial-numeral');
+            txt.textContent = String(h);
+            numsG.appendChild(txt);
+          }
+        }
+      }
+
+      // Resolve effective theme (supports Auto Sunrise/Sunset)
+      function getEffectiveThemeKey() {
+        if (!state.autoTheme) return state.theme;
+        let isDay = true;
+        if (weatherData && weatherData.current && typeof weatherData.current.is_day === 'number') {
+          isDay = weatherData.current.is_day === 1;
+        } else {
+          // Fallback based on Harleton local hour
+          const h = Number(new Intl.DateTimeFormat('en-US', {
+            timeZone: HARLETON.tz,
+            hour: 'numeric',
+            hour12: false
+          }).format(new Date()));
+          isDay = h >= 7 && h < 18;
+        }
+        return isDay ? state.autoDayTheme : state.autoNightTheme;
+      }
+
+      function applyAppearance() {
+        const activeThemeKey = getEffectiveThemeKey();
+        const theme = THEMES[activeThemeKey] || THEMES['midnight-slate'];
+        const root = document.documentElement;
+
+        // Apply base theme variables
+        for (const [k, v] of Object.entries(theme.vars)) {
+          root.style.setProperty(k, v);
+        }
+
+        // Accent override
+        const accentObj = ACCENT_PRESETS.find((a) => a.id === state.accentId);
+        if (accentObj && accentObj.rgb) {
+          root.style.setProperty('--accent-rgb', accentObj.rgb);
+        }
+
+        // Alpha channels & blur
+        root.style.setProperty('--alpha-card', (state.alphaCard / 100).toFixed(2));
+        root.style.setProperty('--alpha-dial', (state.alphaDial / 100).toFixed(2));
+        root.style.setProperty('--alpha-text', (state.alphaText / 100).toFixed(2));
+        root.style.setProperty('--alpha-border', (state.alphaBorder / 100).toFixed(2));
+        root.style.setProperty('--alpha-ambient', (state.alphaAmbient / 100).toFixed(2));
+        root.style.setProperty('--blur-card', `${state.blur}px`);
+
+        // Fonts
+        root.style.setProperty('--font-clock', state.clockFont);
+        root.style.setProperty('--font-ui', state.uiFont);
+        root.style.setProperty('--clock-weight', state.clockWeight);
+        root.style.setProperty('--digital-scale', (state.digitalScale / 100).toFixed(2));
+
+        // Backdrop mode
+        const gradEl = $('bgGradient');
+        const imgEl = $('bgCustomImage');
+        imgEl.classList.remove('active');
+
+        if (state.backdropMode === 'solid') {
+          gradEl.style.display = 'none';
+        } else if (state.backdropMode === 'image' && state.wallpaperUrl.trim()) {
+          gradEl.style.display = 'block';
+          imgEl.style.backgroundImage = `url("${state.wallpaperUrl.replace(/"/g, '%22')}")`;
+          imgEl.classList.add('active');
+        } else if (state.backdropMode === 'weather' && weatherData && weatherData.current) {
+          gradEl.style.display = 'block';
+          const code = weatherData.current.weather_code;
+          const isDay = weatherData.current.is_day === 1;
+          const tint = getWeatherBackdropTint(code, isDay, theme.mode === 'Light');
+          root.style.setProperty('--bg-grad-1', tint[0]);
+          root.style.setProperty('--bg-grad-2', tint[1]);
+        } else {
+          gradEl.style.display = 'block';
+        }
+
+        // Clock arrangement
+        const stage = $('clockStage');
+        stage.classList.toggle('side-by-side', state.clockLayout === 'side');
+
+        // Topbar theme badge
+        $('themePillLabel').textContent = state.autoTheme
+          ? `Auto (${theme.name})`
+          : theme.name;
+        $('btnAutoThemeBadge').classList.toggle('active', state.autoTheme);
+
+        // Sync UI controls
+        syncControlsUI();
+      }
+
+      function getWeatherBackdropTint(code, isDay, isLight) {
+        if (!isDay) {
+          if (code >= 95) return ['88, 28, 135', '30, 41, 59'];
+          if (code >= 51) return ['30, 58, 138', '15, 23, 42'];
+          return ['30, 41, 82', '17, 24, 39'];
+        }
+        if (isLight) {
+          if (code >= 95) return ['148, 163, 184', '196, 181, 253'];
+          if (code >= 51) return ['147, 197, 253', '203, 213, 225'];
+          if (code <= 1) return ['125, 211, 252', '253, 230, 138'];
+          return ['186, 230, 253', '226, 232, 240'];
+        } else {
+          if (code >= 95) return ['88, 28, 135', '51, 65, 85'];
+          if (code >= 51) return ['29, 78, 216', '15, 118, 110'];
+          if (code <= 1) return ['14, 116, 144', '202, 138, 4'];
+          return ['51, 65, 85', '30, 58, 138'];
+        }
+      }
+
+      // Clock loop (uses Harleton, TX timezone accurately)
+      const chicagoPartsFmt = new Intl.DateTimeFormat('en-US', {
+        timeZone: HARLETON.tz,
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        weekday: 'long',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false,
+        timeZoneName: 'short'
+      });
+
+      function getHarletonTimeParts(now) {
+        const parts = chicagoPartsFmt.formatToParts(now);
+        const map = {};
+        for (const p of parts) {
+          map[p.type] = p.value;
+        }
+        let hour24 = parseInt(map.hour, 10);
+        if (hour24 === 24) hour24 = 0;
+        const minute = parseInt(map.minute, 10);
+        const second = parseInt(map.second, 10);
+        const ms = now.getMilliseconds();
+        return {
+          hour24,
+          minute,
+          second,
+          ms,
+          weekday: map.weekday,
+          month: map.month,
+          day: map.day,
+          year: map.year,
+          tzName: map.timeZoneName || 'CST'
+        };
+      }
+
+      function updateClockFrame() {
+        const now = new Date();
+        const t = getHarletonTimeParts(now);
+
+        // Analog angles
+        const secFloat = state.secondMotion === 'sweep' ? t.second + t.ms / 1000 : t.second;
+        const minFloat = t.minute + secFloat / 60;
+        const hourFloat = (t.hour24 % 12) + minFloat / 60;
+
+        $('secondHand').setAttribute('transform', `rotate(${(secFloat * 6).toFixed(2)} 110 110)`);
+        $('minuteHand').setAttribute('transform', `rotate(${(minFloat * 6).toFixed(2)} 110 110)`);
+        $('hourHand').setAttribute('transform', `rotate(${(hourFloat * 30).toFixed(2)} 110 110)`);
+
+        // Digital clock
+        let displayH = t.hour24;
+        let ampm = '';
+        if (!state.use24Hour) {
+          ampm = displayH >= 12 ? 'PM' : 'AM';
+          displayH = displayH % 12 || 12;
+        }
+        const hStr = state.use24Hour ? String(displayH).padStart(2, '0') : String(displayH);
+        const mStr = String(t.minute).padStart(2, '0');
+        const sStr = String(t.second).padStart(2, '0');
+
+        $('digitalHM').textContent = `${hStr}:${mStr}`;
+        $('digitalSec').textContent = state.showSeconds ? sStr : '';
+        $('digitalSec').style.display = state.showSeconds ? 'block' : 'none';
+        $('digitalAmPm').textContent = state.use24Hour ? '24H' : ampm;
+        $('dateDisplay').textContent = `${t.weekday}, ${t.month} ${t.day}, ${t.year}`;
+        $('tzTag').textContent = t.tzName;
+
+        requestAnimationFrame(updateClockFrame);
+      }
+
+      // WMO Weather Code mapping + crisp SVG Icons
+      function describeWmo(code) {
+        const table = {
+          0: 'Clear Sky',
+          1: 'Mainly Clear',
+          2: 'Partly Cloudy',
+          3: 'Overcast',
+          45: 'Foggy',
+          48: 'Freezing Fog',
+          51: 'Light Drizzle',
+          53: 'Moderate Drizzle',
+          55: 'Dense Drizzle',
+          56: 'Freezing Drizzle',
+          57: 'Heavy Freezing Drizzle',
+          61: 'Light Rain',
+          63: 'Moderate Rain',
+          65: 'Heavy Rain',
+          66: 'Freezing Rain',
+          67: 'Heavy Freezing Rain',
+          71: 'Light Snow',
+          73: 'Moderate Snow',
+          75: 'Heavy Snow',
+          77: 'Snow Grains',
+          80: 'Light Showers',
+          81: 'Rain Showers',
+          82: 'Heavy Showers',
+          85: 'Snow Showers',
+          86: 'Heavy Snow Showers',
+          95: 'Thunderstorm',
+          96: 'Storm w/ Light Hail',
+          99: 'Severe Thunderstorm'
+        };
+        return table[code] || 'Variable Clouds';
+      }
+
+      function getWeatherSvg(code, isDay = 1) {
+        const sun = `
+          <circle cx="32" cy="32" r="12" fill="#fbbf24" />
+          <g stroke="#fbbf24" stroke-width="2.6" stroke-linecap="round">
+            <line x1="32" y1="10" x2="32" y2="15"/>
+            <line x1="32" y1="49" x2="32" y2="54"/>
+            <line x1="10" y1="32" x2="15" y2="32"/>
+            <line x1="49" y1="32" x2="54" y2="32"/>
+            <line x1="16.4" y1="16.4" x2="20" y2="20"/>
+            <line x1="44" y1="44" x2="47.6" y2="47.6"/>
+            <line x1="47.6" y1="16.4" x2="44" y2="20"/>
+            <line x1="20" y1="44" x2="16.4" y2="47.6"/>
+          </g>`;
+        const moon = `
+          <path d="M40 16a16 16 0 1 0 10 28 13 13 0 1 1-10-28z" fill="#e2e8f0" />
+          <circle cx="46" cy="18" r="1.5" fill="#fde68a"/>
+          <circle cx="51" cy="25" r="1.1" fill="#fde68a"/>`;
+        const cloud = `
+          <path d="M20 46h25a10 10 0 0 0 1.5-19.9A13.5 13.5 0 0 0 20.8 23a11 11 0 0 0-.8 23z" fill="currentColor" fill-opacity="0.88"/>`;
+        const cloudSoft = `
+          <path d="M22 47h24a9 9 0 0 0 1.3-17.9A12 12 0 0 0 23.6 26a10 10 0 0 0-1.6 21z" fill="currentColor" fill-opacity="0.92"/>`;
+
+        let inner = '';
+        if (code === 0) {
+          inner = isDay ? sun : moon;
+        } else if (code === 1 || code === 2) {
+          inner = isDay
+            ? `<g transform="translate(-7,-6) scale(0.84)">${sun}</g>${cloudSoft}`
+            : `<g transform="translate(-5,-5) scale(0.82)">${moon}</g>${cloudSoft}`;
+        } else if (code === 3) {
+          inner = cloud;
+        } else if (code === 45 || code === 48) {
+          inner = `
+            <g transform="translate(0,-5)">${cloud}</g>
+            <g stroke="currentColor" stroke-opacity="0.65" stroke-width="2.6" stroke-linecap="round">
+              <line x1="16" y1="48" x2="48" y2="48"/>
+              <line x1="20" y1="54" x2="44" y2="54"/>
+            </g>`;
+        } else if ((code >= 51 && code <= 67) || (code >= 80 && code <= 82)) {
+          inner = `
+            <g transform="translate(0,-6)">${cloud}</g>
+            <g stroke="#38bdf8" stroke-width="2.6" stroke-linecap="round">
+              <line x1="22" y1="44" x2="19" y2="53"/>
+              <line x1="32" y1="44" x2="29" y2="53"/>
+              <line x1="42" y1="44" x2="39" y2="53"/>
+            </g>`;
+        } else if ((code >= 71 && code <= 77) || code === 85 || code === 86) {
+          inner = `
+            <g transform="translate(0,-6)">${cloud}</g>
+            <g fill="#bae6fd">
+              <circle cx="22" cy="48" r="2.3"/>
+              <circle cx="32" cy="51" r="2.3"/>
+              <circle cx="42" cy="48" r="2.3"/>
+            </g>`;
+        } else if (code >= 95) {
+          inner = `
+            <g transform="translate(0,-6)">${cloud}</g>
+            <polygon points="34,40 26,50 32,50 29,59 40,47 34,47" fill="#fbbf24"/>`;
+        } else {
+          inner = cloud;
+        }
+
+        return `<svg viewBox="0 0 64 64" width="100%" height="100%" aria-hidden="true">${inner}</svg>`;
+      }
+
+      function formatTemp(tempF) {
+        if (tempF == null || Number.isNaN(tempF)) return '--°';
+        const val = state.tempUnit === 'C' ? ((tempF - 32) * 5) / 9 : tempF;
+        return `${Math.round(val)}°`;
+      }
+
+      function degToCompass(deg) {
+        const dirs = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW'];
+        return dirs[Math.round(deg / 22.5) % 16];
+      }
+
+      function formatIsoTimeShort(isoStr) {
+        // isoStr like "2026-11-16T06:51"
+        const [, hm] = isoStr.split('T');
+        if (!hm) return '--:--';
+        const [hhStr, mmStr] = hm.split(':');
+        const hh = parseInt(hhStr, 10);
+        if (state.use24Hour) return `${String(hh).padStart(2, '0')}:${mmStr}`;
+        const ampm = hh >= 12 ? 'PM' : 'AM';
+        const h12 = hh % 12 || 12;
+        return `${h12}:${mmStr} ${ampm}`;
+      }
+
+      function formatHourLabel(isoStr) {
+        const [, hm] = isoStr.split('T');
+        const hh = parseInt((hm || '00').split(':')[0], 10);
+        if (state.use24Hour) return `${String(hh).padStart(2, '0')}:00`;
+        const ampm = hh >= 12 ? 'p' : 'a';
+        const h12 = hh % 12 || 12;
+        return `${h12}${ampm}`;
+      }
+
+      function formatDayName(dateStr, idx) {
+        if (idx === 0) return 'Today';
+        const [y, m, d] = dateStr.split('-').map(Number);
+        const dt = new Date(Date.UTC(y, m - 1, d, 12, 0, 0));
+        return new Intl.DateTimeFormat('en-US', { weekday: 'short', timeZone: 'UTC' }).format(dt);
+      }
+
+      function renderWeather() {
+        if (!weatherData) return;
+        const c = weatherData.current;
+        const d = weatherData.daily;
+        const h = weatherData.hourly;
+
+        $('weatherHeroIcon').innerHTML = getWeatherSvg(c.weather_code, c.is_day);
+        $('currentTemp').textContent = formatTemp(c.temperature_2m);
+        $('currentCond').textContent = describeWmo(c.weather_code);
+        $('currentFeels').textContent =
+          `Feels like ${formatTemp(c.apparent_temperature)}  •  H: ${formatTemp(d.temperature_2m_max[0])}  L: ${formatTemp(d.temperature_2m_min[0])}`;
+
+        // Metrics
+        $('metricHumidity').textContent = `${Math.round(c.relative_humidity_2m)}%`;
+        $('metricClouds').textContent = `Cloud cover ${Math.round(c.cloud_cover)}%`;
+
+        $('metricWind').textContent = `${Math.round(c.wind_speed_10m)} mph`;
+        $('metricWindDir').textContent = `From ${degToCompass(c.wind_direction_10m)} (${Math.round(c.wind_direction_10m)}°)`;
+
+        const inHg = (c.surface_pressure * 0.02953).toFixed(2);
+        $('metricPressure').textContent = `${inHg} inHg`;
+        $('metricPressureHpa').textContent = `${Math.round(c.surface_pressure)} hPa`;
+
+        const rainProbToday = d.precipitation_probability_max ? d.precipitation_probability_max[0] : 0;
+        const uvMax = d.uv_index_max ? d.uv_index_max[0] : 0;
+        $('metricRain').textContent = `${rainProbToday ?? 0}%`;
+        $('metricUV').textContent = `Max UV ${uvMax != null ? uvMax.toFixed(1) : '--'}`;
+
+        // Sunrise / Sunset / Daylight
+        if (d.sunrise && d.sunset && d.sunrise[0] && d.sunset[0]) {
+          $('sunriseVal').textContent = formatIsoTimeShort(d.sunrise[0]);
+          $('sunsetVal').textContent = formatIsoTimeShort(d.sunset[0]);
+          const sr = new Date(d.sunrise[0]);
+          const ss = new Date(d.sunset[0]);
+          const diffMin = Math.max(0, Math.round((ss - sr) / 60000));
+          const hrs = Math.floor(diffMin / 60);
+          const mins = diffMin % 60;
+          $('daylightVal').textContent = `${hrs}h ${mins}m`;
+        }
+
+        // Hourly strip (next 8 hours from current Harleton hour)
+        const now = new Date();
+        // Find index closest to current time using ISO comparison in America/Chicago
+        const chicagoIsoNow = new Intl.DateTimeFormat('sv-SE', {
+          timeZone: HARLETON.tz,
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+          hour: '2-digit',
+          hour12: false
+        }).format(now).replace(' ', 'T').slice(0, 13);
+
+        let startIdx = h.time.findIndex((ts) => ts.slice(0, 13) >= chicagoIsoNow);
+        if (startIdx < 0) startIdx = 0;
+
+        const hourlyEl = $('hourlyStrip');
+        hourlyEl.innerHTML = '';
+        for (let i = startIdx; i < Math.min(startIdx + 8, h.time.length); i++) {
+          const item = document.createElement('div');
+          item.className = 'hour-item';
+          const prob = h.precipitation_probability[i];
+          item.innerHTML = `
+            <span class="hour-time">${i === startIdx ? 'Now' : formatHourLabel(h.time[i])}</span>
+            <div class="hour-icon">${getWeatherSvg(h.weather_code[i], h.is_day[i])}</div>
+            <span class="hour-temp">${formatTemp(h.temperature_2m[i])}</span>
+            <span class="hour-rain">${prob > 5 ? `${prob}%` : ''}</span>
+          `;
+          hourlyEl.appendChild(item);
+        }
+
+        // 5-Day outlook
+        const dailyEl = $('dailyList');
+        dailyEl.innerHTML = '';
+        for (let i = 0; i < Math.min(5, d.time.length); i++) {
+          const item = document.createElement('div');
+          item.className = 'day-item';
+          const prob = d.precipitation_probability_max ? d.precipitation_probability_max[i] : 0;
+          item.innerHTML = `
+            <span class="day-name">${formatDayName(d.time[i], i)}</span>
+            <div class="day-icon">${getWeatherSvg(d.weather_code[i], 1)}</div>
+            <div class="day-temps">
+              <span class="day-hi">${formatTemp(d.temperature_2m_max[i])}</span>
+              <span class="day-lo">${formatTemp(d.temperature_2m_min[i])}</span>
+            </div>
+            <span class="hour-rain">${prob > 10 ? `${prob}% rain` : ''}</span>
+          `;
+          dailyEl.appendChild(item);
+        }
+
+        // Re-apply appearance in case auto-theme or weather-tint depends on current weather
+        applyAppearance();
+      }
+
+      async function fetchWeather() {
+        const dot = $('statusDot');
+        const url =
+          `https://api.open-meteo.com/v1/forecast?latitude=${HARLETON.lat}&longitude=${HARLETON.lon}` +
+          `&current=temperature_2m,relative_humidity_2m,apparent_temperature,is_day,precipitation,weather_code,cloud_cover,surface_pressure,wind_speed_10m,wind_direction_10m` +
+          `&hourly=temperature_2m,weather_code,precipitation_probability,is_day` +
+          `&daily=weather_code,temperature_2m_max,temperature_2m_min,sunrise,sunset,precipitation_probability_max,uv_index_max` +
+          `&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch&timezone=America%2FChicago&forecast_days=6`;
+
+        try {
+          const res = await fetch(url);
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          weatherData = await res.json();
+          dot.classList.remove('offline');
+          const updatedFmt = new Intl.DateTimeFormat('en-US', {
+            timeZone: HARLETON.tz,
+            hour: 'numeric',
+            minute: '2-digit'
+          }).format(new Date());
+          $('weatherUpdated').textContent = `Updated ${updatedFmt} CT`;
+          renderWeather();
+        } catch (err) {
+          dot.classList.add('offline');
+          $('weatherUpdated').textContent = 'Offline — retrying soon';
+          if (!weatherData) {
+            $('currentCond').textContent = 'Unable to reach weather service';
+          }
+        }
+
+        // Check NOAA/NWS active alerts for Harleton / Harrison County
+        try {
+          const alertRes = await fetch(
+            `https://api.weather.gov/alerts/active?point=${HARLETON.lat},${HARLETON.lon}`,
+            { headers: { Accept: 'application/geo+json' } }
+          );
+          if (alertRes.ok) {
+            const alertJson = await alertRes.json();
+            const features = alertJson.features || [];
+            const banner = $('alertBanner');
+            if (features.length > 0) {
+              const props = features[0].properties || {};
+              const sev = (props.severity || '').toLowerCase();
+              banner.classList.add('visible');
+              banner.classList.toggle('severe', sev === 'severe' || sev === 'extreme');
+              $('alertBadge').textContent = props.event || 'NWS Alert';
+              $('alertText').textContent = props.headline || 'Active weather advisory for Harrison County, TX.';
+            } else {
+              banner.classList.remove('visible', 'severe');
+            }
+          }
+        } catch {
+          // Silently ignore NWS alert errors
+        }
+      }
+
+      // Build Settings UI
+      function buildSettingsUI() {
+        const themeGrid = $('themeGrid');
+        themeGrid.innerHTML = '';
+
+        const selDay = $('selAutoDay');
+        const selNight = $('selAutoNight');
+        selDay.innerHTML = '';
+        selNight.innerHTML = '';
+
+        for (const [key, t] of Object.entries(THEMES)) {
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'theme-chip';
+          btn.dataset.theme = key;
+          btn.innerHTML = `
+            <span class="theme-swatch" style="background: ${t.swatch};">
+              <span class="theme-swatch-accent" style="background: ${t.swatchAccent};"></span>
+            </span>
+            <span class="theme-meta">
+              <span>${t.name}</span>
+              <span class="theme-mode-tag">${t.mode}</span>
+            </span>
+          `;
+          btn.addEventListener('click', () => {
+            state.theme = key;
+            state.autoTheme = false;
+            // Apply theme's curated alpha defaults smoothly
+            Object.assign(state, t.defaults);
+            saveSettings();
+            applyAppearance();
+          });
+          themeGrid.appendChild(btn);
+
+          const opt = document.createElement('option');
+          opt.value = key;
+          opt.textContent = t.name;
+          if (t.mode === 'Light') selDay.appendChild(opt);
+          else selNight.appendChild(opt);
+        }
+
+        // Accent Dots
+        const dotsWrap = $('accentDots');
+        dotsWrap.innerHTML = '';
+        for (const a of ACCENT_PRESETS) {
+          const d = document.createElement('button');
+          d.type = 'button';
+          d.className = 'accent-dot';
+          d.title = a.label;
+          d.dataset.accent = a.id;
+          d.style.background = a.hex;
+          d.addEventListener('click', () => {
+            state.accentId = a.id;
+            saveSettings();
+            applyAppearance();
+          });
+          dotsWrap.appendChild(d);
+        }
+      }
+
+      function syncControlsUI() {
+        const effectiveKey = getEffectiveThemeKey();
+        document.querySelectorAll('.theme-chip').forEach((el) => {
+          el.classList.toggle('active', el.dataset.theme === effectiveKey);
+        });
+
+        document.querySelectorAll('.accent-dot').forEach((el) => {
+          el.classList.toggle('active', el.dataset.accent === state.accentId);
+        });
+
+        $('chkAutoTheme').checked = state.autoTheme;
+        $('autoPairControls').style.display = state.autoTheme ? 'grid' : 'none';
+        $('selAutoDay').value = state.autoDayTheme;
+        $('selAutoNight').value = state.autoNightTheme;
+
+        $('rngAlphaCard').value = state.alphaCard;
+        $('valAlphaCard').textContent = `${state.alphaCard}%`;
+        $('rngAlphaDial').value = state.alphaDial;
+        $('valAlphaDial').textContent = `${state.alphaDial}%`;
+        $('rngAlphaText').value = state.alphaText;
+        $('valAlphaText').textContent = `${state.alphaText}%`;
+        $('rngAlphaBorder').value = state.alphaBorder;
+        $('valAlphaBorder').textContent = `${state.alphaBorder}%`;
+        $('rngAlphaAmbient').value = state.alphaAmbient;
+        $('valAlphaAmbient').textContent = `${state.alphaAmbient}%`;
+        $('rngBlur').value = state.blur;
+        $('valBlur').textContent = `${state.blur}px`;
+
+        $('selClockFont').value = state.clockFont;
+        $('selUiFont').value = state.uiFont;
+        $('rngDigitalScale').value = state.digitalScale;
+        $('valDigitalScale').textContent = `${state.digitalScale}%`;
+
+        $('inpWallpaperUrl').value = state.wallpaperUrl;
+        $('wallpaperUrlWrap').style.display = state.backdropMode === 'image' ? 'flex' : 'none';
+
+        $('chk24Hour').checked = state.use24Hour;
+        $('chkShowSeconds').checked = state.showSeconds;
+
+        $('btnUnitF').classList.toggle('active', state.tempUnit === 'F');
+        $('btnUnitC').classList.toggle('active', state.tempUnit === 'C');
+
+        const syncSeg = (id, val) => {
+          document.querySelectorAll(`#${id} button`).forEach((b) => {
+            b.classList.toggle('active', b.dataset.val === String(val));
+          });
+        };
+        syncSeg('segBackdropMode', state.backdropMode);
+        syncSeg('segClockWeight', state.clockWeight);
+        syncSeg('segClockLayout', state.clockLayout);
+        syncSeg('segDialStyle', state.dialStyle);
+        syncSeg('segSecondMotion', state.secondMotion);
+      }
+
+      function wireEvents() {
+        // Drawer Open/Close
+        const openDrawer = () => {
+          $('settingsDrawer').classList.add('open');
+          $('drawerBackdrop').classList.add('open');
+        };
+        const closeDrawer = () => {
+          $('settingsDrawer').classList.remove('open');
+          $('drawerBackdrop').classList.remove('open');
+        };
+        $('btnOpenSettings').addEventListener('click', openDrawer);
+        $('btnCloseSettings').addEventListener('click', closeDrawer);
+        $('btnCloseDrawerBottom').addEventListener('click', closeDrawer);
+        $('drawerBackdrop').addEventListener('click', closeDrawer);
+
+        // Quick topbar toggles
+        $('btnAutoThemeBadge').addEventListener('click', () => {
+          state.autoTheme = !state.autoTheme;
+          saveSettings();
+          applyAppearance();
+        });
+
+        $('btnRefreshWeather').addEventListener('click', () => {
+          fetchWeather();
+        });
+
+        $('btnFullscreen').addEventListener('click', async () => {
+          try {
+            if (!document.fullscreenElement) {
+              await document.documentElement.requestFullscreen();
+              $('btnFullscreen').classList.add('active');
+            } else {
+              await document.exitFullscreen();
+              $('btnFullscreen').classList.remove('active');
+            }
+          } catch {
+            // ignore if blocked
+          }
+        });
+
+        $('btnWakeLock').addEventListener('click', async () => {
+          if (!('wakeLock' in navigator)) {
+            alert('Screen Wake Lock is not supported in this browser.');
+            return;
+          }
+          try {
+            if (wakeLock) {
+              await wakeLock.release();
+              wakeLock = null;
+              $('btnWakeLock').classList.remove('active');
+            } else {
+              wakeLock = await navigator.wakeLock.request('screen');
+              $('btnWakeLock').classList.add('active');
+              wakeLock.addEventListener('release', () => {
+                wakeLock = null;
+                $('btnWakeLock').classList.remove('active');
+              });
+            }
+          } catch {
+            $('btnWakeLock').classList.remove('active');
+          }
+        });
+
+        // Temp units
+        $('btnUnitF').addEventListener('click', () => {
+          state.tempUnit = 'F';
+          saveSettings();
+          renderWeather();
+          syncControlsUI();
+        });
+        $('btnUnitC').addEventListener('click', () => {
+          state.tempUnit = 'C';
+          saveSettings();
+          renderWeather();
+          syncControlsUI();
+        });
+
+        // Auto theme
+        $('chkAutoTheme').addEventListener('change', (e) => {
+          state.autoTheme = e.target.checked;
+          saveSettings();
+          applyAppearance();
+        });
+        $('selAutoDay').addEventListener('change', (e) => {
+          state.autoDayTheme = e.target.value;
+          saveSettings();
+          applyAppearance();
+        });
+        $('selAutoNight').addEventListener('change', (e) => {
+          state.autoNightTheme = e.target.value;
+          saveSettings();
+          applyAppearance();
+        });
+
+        // Alpha sliders
+        const bindRange = (id, key) => {
+          $(id).addEventListener('input', (e) => {
+            state[key] = Number(e.target.value);
+            saveSettings();
+            applyAppearance();
+          });
+        };
+        bindRange('rngAlphaCard', 'alphaCard');
+        bindRange('rngAlphaDial', 'alphaDial');
+        bindRange('rngAlphaText', 'alphaText');
+        bindRange('rngAlphaBorder', 'alphaBorder');
+        bindRange('rngAlphaAmbient', 'alphaAmbient');
+        bindRange('rngBlur', 'blur');
+        bindRange('rngDigitalScale', 'digitalScale');
+
+        $('btnMatchThemeAlpha').addEventListener('click', () => {
+          const t = THEMES[getEffectiveThemeKey()] || THEMES['midnight-slate'];
+          Object.assign(state, t.defaults);
+          saveSettings();
+          applyAppearance();
+        });
+
+        // Fonts
+        $('selClockFont').addEventListener('change', (e) => {
+          state.clockFont = e.target.value;
+          saveSettings();
+          applyAppearance();
+        });
+        $('selUiFont').addEventListener('change', (e) => {
+          state.uiFont = e.target.value;
+          saveSettings();
+          applyAppearance();
+        });
+
+        // Wallpaper URL
+        $('inpWallpaperUrl').addEventListener('change', (e) => {
+          state.wallpaperUrl = e.target.value;
+          saveSettings();
+          applyAppearance();
+        });
+
+        // Segmented groups
+        const bindSeg = (id, key, onAfter) => {
+          document.querySelectorAll(`#${id} button`).forEach((btn) => {
+            btn.addEventListener('click', () => {
+              state[key] = btn.dataset.val;
+              saveSettings();
+              if (onAfter) onAfter();
+              applyAppearance();
+            });
+          });
+        };
+        bindSeg('segBackdropMode', 'backdropMode');
+        bindSeg('segClockWeight', 'clockWeight');
+        bindSeg('segClockLayout', 'clockLayout');
+        bindSeg('segDialStyle', 'dialStyle', buildDial);
+        bindSeg('segSecondMotion', 'secondMotion');
+
+        // Clock checkboxes
+        $('chk24Hour').addEventListener('change', (e) => {
+          state.use24Hour = e.target.checked;
+          saveSettings();
+          renderWeather();
+        });
+        $('chkShowSeconds').addEventListener('change', (e) => {
+          state.showSeconds = e.target.checked;
+          saveSettings();
+        });
+
+        // Reset All
+        $('btnResetAll').addEventListener('click', () => {
+          state = { ...DEFAULT_STATE };
+          saveSettings();
+          buildDial();
+          applyAppearance();
+          renderWeather();
+        });
+      }
+
+      // Initialize
+      buildSettingsUI();
+      buildDial();
+      wireEvents();
+      applyAppearance();
+      requestAnimationFrame(updateClockFrame);
+      fetchWeather();
+
+      // Refresh Harleton weather every 10 minutes
+      setInterval(fetchWeather, 10 * 60 * 1000);
+    })();
+  </script>
+</body>
+</html>
